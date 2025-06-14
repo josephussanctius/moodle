@@ -42,7 +42,12 @@ use mod_h5pactivity\xapi\handler;
  */
 function h5pactivity_refresh_events($courseid = 0, $instance = null, $userid = 0, $groupid = 0) {
     global $DB;
-
+    
+    $instanceid = null;
+    if ($instance) {
+        $instanceid = is_object($instance) ? $instance->id : (int)$instance;
+    }
+    
     if ($instance) {
         $records = [$DB->get_record('h5pactivity', ['id' => $instance], '*', MUST_EXIST)];
     } else {
