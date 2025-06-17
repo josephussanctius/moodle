@@ -1182,6 +1182,7 @@ $string['indicator:userforumstracking_help'] = 'This indicator represents whethe
 $string['info'] = 'Information';
 $string['inprogress'] = 'In progress';
 $string['insertcontentbefore'] = 'Insert content before \'{$a->activityname}\'';
+$string['insertcontentsection'] = 'Insert content in section \'{$a->sectionname}\'';
 $string['insertresourceoractivitybefore'] = 'Insert an activity or resource before \'{$a->activityname}\'';
 $string['institution'] = 'Institution';
 $string['instudentview'] = 'in student view';
@@ -1288,7 +1289,6 @@ $string['match'] = 'Match';
 $string['matchingsearchandrole'] = 'Matching \'{$a->search}\' and {$a->role}';
 $string['matchofthefollowing'] = 'of the following:';
 $string['maxareabytesreached'] = 'The file (or the total size of several files) is larger than the space remaining in this area.';
-$string['maxsectionslimit'] = 'Cannot create new section as it would exceed the maximum number of sections allowed for this course ({$a}).';
 $string['maxfilesize'] = 'Maximum size for new files: {$a}';
 $string['maxfilesreached'] = 'You are allowed to attach a maximum of {$a} file(s) to this item';
 $string['maximumchars'] = 'Maximum of {$a} characters';
@@ -1297,8 +1297,8 @@ $string['maximumgradex'] = 'Maximum grade: {$a}';
 $string['maximumshort'] = 'Max';
 $string['maximumupload'] = 'Maximum upload size';
 $string['maximumupload_help'] = 'The maximum file size allowed for student uploads to the course. Additionally, you can further restrict the maximum upload size for each activity.';
-$string['maxnumberweeks'] = 'Maximum number of sections';
-$string['maxnumberweeks_desc'] = 'The maximum value in the number of sections drop-down menu (applies to certain course formats only).';
+$string['maxnumberweeks'] = 'Maximum number of sections (deprecated)';
+$string['maxnumberweeks_desc'] = 'The maximum value in the number of sections drop-down menu (applies to certain course formats only). This setting is deprecated and will be removed in a future version of Moodle. Please use the course format settings instead.';
 $string['maxnumcoursesincombo'] = 'Browse <a href="{$a->link}">{$a->numberofcourses} courses</a>.';
 $string['maxsize'] = 'Max size: {$a}';
 $string['maxsizeandareasize'] = 'Maximum size for new files: {$a->size}, overall limit: {$a->areasize}';
@@ -1827,6 +1827,7 @@ $string['remoteappuser'] = 'Remote {$a} User';
 $string['remove'] = 'Remove';
 $string['removeadmin'] = 'Remove admin';
 $string['removecreator'] = 'Remove course creator';
+$string['removed'] = 'Removed {$a}';
 $string['removestudent'] = 'Remove student';
 $string['removeteacher'] = 'Remove teacher';
 $string['rename'] = 'Rename';
@@ -2488,3 +2489,6 @@ $string['registrationcontactyes'] = 'Yes, provide a form for other Moodlers to c
 
 // Deprecated since Moodle 5.0.
 $string['failedtaskcontexturlname'] = 'Status report';
+
+// Deprecated since Moodle 5.1.
+$string['maxsectionslimit'] = 'Cannot create new section as it would exceed the maximum number of sections allowed for this course ({$a}).';
