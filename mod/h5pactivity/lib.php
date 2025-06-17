@@ -29,6 +29,105 @@ use mod_h5pactivity\local\grader;
 use mod_h5pactivity\xapi\handler;
 
 /**
+ * Rebuilds the completion–due calendar events for H5P activities.
+ *
+ * This is invoked by core cron (refresh_mod_calendar_events_task),
+ * by course restore, and by module duplication.
+ *
+ * @param int        $courseid  zero = any course
+ * @param int|stdClass|null $instance  activity id **or** full record **or** null
+ * @param int        $userid    (unused)
+ * @param int        $groupid   (unused)
+ * @return bool always true
+ */
+function h5pactivity_refresh_events($courseid = 0,
+                                    $instance = null,
+                                    $userid   = 0,
+                                    $groupid  = 0) : bool {
+    global $DB;
+
+    // 1. Build the list of H5P records we need to process.
+    if ($instance) {
+        if (is_object($instance)) {
+            // The caller already provided the full record (duplication path).
+            $records = [$instance];
+        } else {
+            // Caller gave us just an id.
+            $records = [$DB->get_record('h5pactivity',
+                         ['id' => (int)$instance], '*', MUST_EXIST)];
+        }
+    } else {
+        // Refresh the whole course or whole site.
+        $records = $DB->get_records('h5pactivity',
+                     $courseid ? ['course' => $courseid] : []);
+    }
+
+    // 2. For each activity build / update the calendar event.
+    foreach ($records as $h5p) {
+        if (!$h5p) {                // safety
+            continue;
+        }
+
+        $cm = get_coursemodule_from_instance('h5pactivity',
+                                             $h5p->id,
+                                             $h5p->course,
+                                             false,
+                                             MUST_EXIST);
+
+        $completiontime = empty($h5p->completionexpected)
+                            ? null
+                            : (int)$h5p->completionexpected;
+
+        \core_completion\api::update_completion_date_event(
+                $cm->id, 'h5pactivity', $h5p->id, $completiontime);
+    }
+    return true;
+}
+
+/**
+ * Provide the event action for calendar events.
+ *
+ * @param calendar_event $event The calendar event
+ * @param \core_calendar\action_factory $factory The factory to create the action
+ * @param int $userid Optional user id, defaults to current user
+ * @return \core_calendar\local\event\value_objects\action|null
+ */
+function mod_h5pactivity_core_calendar_provide_event_action(
+    calendar_event $event,
+    \core_calendar\action_factory $factory,
+    int $userid = 0
+) : ?\core_calendar\local\event\value_objects\action {
+    global $USER;
+
+    if (!$userid) {
+        $userid = $USER->id;
+    }
+
+    $modinfo = get_fast_modinfo($event->courseid);
+    if (empty($modinfo->instances['h5pactivity'][$event->instance])) {
+        return null;
+    }
+    $cm = $modinfo->instances['h5pactivity'][$event->instance];
+    if (!$cm->uservisible) {
+        return null;
+    }
+
+    $completion = new completion_info($modinfo->get_course());
+    if ($completion->is_enabled($cm) &&
+            $completion->get_data($cm, false, $userid)->completionstate == COMPLETION_COMPLETE) {
+        return null;
+    }
+
+    $url = new moodle_url('/mod/h5pactivity/view.php', ['id' => $cm->id]);
+    return $factory->create_instance(
+        get_string('view'),
+        $url,
+        $event->timestart,
+        true
+    );
+}
+
+/**
  * Checks if H5P activity supports a specific feature.
  *
  * @uses FEATURE_GROUPS
@@ -98,6 +197,10 @@ function h5pactivity_add_instance(stdClass $data, ?mod_h5pactivity_mod_form $mfo
     // Extra fields required in grade related functions.
     $data->cmid = $data->coursemodule;
     h5pactivity_grade_item_update($data);
+
+    $completiontime = empty($data->completionexpected) ? null : $data->completionexpected;
+    \core_completion\api::update_completion_date_event(
+            $cmid, 'h5pactivity', $data->id, $completiontime);
     return $data->id;
 }
 
@@ -129,7 +232,13 @@ function h5pactivity_update_instance(stdClass $data, ?mod_h5pactivity_mod_form $
         h5pactivity_grade_item_update($data);
     }
 
-    return $DB->update_record('h5pactivity', $data);
+    $ok = $DB->update_record('h5pactivity', $data);
+
+    $completiontime = empty($data->completionexpected) ? null : $data->completionexpected;
+    \core_completion\api::update_completion_date_event(
+            $data->coursemodule, 'h5pactivity', $data->id, $completiontime);
+
+    return $ok;
 }
 
 /**
