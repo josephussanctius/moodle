@@ -29,42 +29,58 @@ use mod_h5pactivity\local\grader;
 use mod_h5pactivity\xapi\handler;
 
 /**
- * Refresh all module events for completion tracking.
+ * Rebuilds the completion–due calendar events for H5P activities.
  *
- * This allows the calendar events related to completion expected dates to be
- * rebuilt during actions such as course reset or restore.
+ * This is invoked by core cron (refresh_mod_calendar_events_task),
+ * by course restore, and by module duplication.
  *
- * @param int $courseid Course id to limit the refresh to
- * @param int|stdClass|null $instance Specific instance to refresh
- * @param int $userid Unused
- * @param int $groupid Unused
- * @return bool
+ * @param int        $courseid  zero = any course
+ * @param int|stdClass|null $instance  activity id **or** full record **or** null
+ * @param int        $userid    (unused)
+ * @param int        $groupid   (unused)
+ * @return bool always true
  */
-function h5pactivity_refresh_events($courseid = 0, $instance = null, $userid = 0, $groupid = 0) {
+function h5pactivity_refresh_events($courseid = 0,
+                                    $instance = null,
+                                    $userid   = 0,
+                                    $groupid  = 0) : bool {
     global $DB;
-    
-    $instanceid = null;
+
+    // 1. Build the list of H5P records we need to process.
     if ($instance) {
-        $instanceid = is_object($instance) ? $instance->id : (int)$instance;
-    }
-    
-    if ($instance) {
-        $records = [$DB->get_record('h5pactivity', ['id' => $instance], '*', MUST_EXIST)];
+        if (is_object($instance)) {
+            // The caller already provided the full record (duplication path).
+            $records = [$instance];
+        } else {
+            // Caller gave us just an id.
+            $records = [$DB->get_record('h5pactivity',
+                         ['id' => (int)$instance], '*', MUST_EXIST)];
+        }
     } else {
-        $records = $DB->get_records('h5pactivity', $courseid ? ['course' => $courseid] : []);
+        // Refresh the whole course or whole site.
+        $records = $DB->get_records('h5pactivity',
+                     $courseid ? ['course' => $courseid] : []);
     }
 
+    // 2. For each activity build / update the calendar event.
     foreach ($records as $h5p) {
-        $cm = get_coursemodule_from_instance('h5pactivity', $h5p->id, $h5p->course);
-        $completiontime = $h5p->completionexpected ?: null;
-        \core_completion\api::update_completion_date_event(
-            $cm->id,
-            'h5pactivity',
-            $h5p->id,
-            $completiontime
-        );
-    }
+        if (!$h5p) {                // safety
+            continue;
+        }
 
+        $cm = get_coursemodule_from_instance('h5pactivity',
+                                             $h5p->id,
+                                             $h5p->course,
+                                             false,
+                                             MUST_EXIST);
+
+        $completiontime = empty($h5p->completionexpected)
+                            ? null
+                            : (int)$h5p->completionexpected;
+
+        \core_completion\api::update_completion_date_event(
+                $cm->id, 'h5pactivity', $h5p->id, $completiontime);
+    }
     return true;
 }
 
